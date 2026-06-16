@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ff: {
+                            fundo: '#080810',
+                            card: '#10101e',
+                            borda: '#252540',
+                            destaque: '#ff2e63',
+                            azul: '#0099ff',
+                            verde: '#00c853',
+                            amarelo: '#ffd600',
+                            laranja: '#ff9500',
+                            roxo: '#9d4edd',
+                            vermelho: '#ff3d00',
+                            texto: '#e0e0f0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glow { box-shadow: 0 0 8px #ff2e6340, 0 0 16px #ff2e6320; }
+        .glow-blue { box-shadow: 0 0 8px #0099ff40, 0 0 16px #0099ff20; }
+        .mod-border { border: 1px solid transparent; background: linear-gradient(#10101e, #10101e) padding-box, linear-gradient(45deg, #ff2e63, #0099ff) border-box; }
+        .cabecalho-arrastavel { cursor: grab; user-select: none; }
+        .cabecalho-arrastavel:active { cursor: grabbing; }
+        .conteudo { cursor: default; overflow-y: auto; max-height: 65vh; }
+        input[type="range"]::-webkit-slider-thumb { background: #ff2e63; }
+        input[type="range"]::-moz-range-thumb { background: #ff2e63; }
+        .texto-chave { color: #ffffff !important; }
+    </style>
+</head>
+<body class="bg-ff-fundo min-h-screen text-ff-texto p-4">
+
+    <!-- TELA DE ACESSO USUÁRIO -->
+    <div id="telaAcesso" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
+        <div class="mod-border glow p-6 rounded-xl w-full max-w-sm text-center bg-ff-card">
+            <h2 class="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-ff-destaque to-ff-azul mb-3">🔑 Verificação de Acesso</h2>
+            <p class="text-sm text-ff-texto/70 mb-4">Insira sua chave de licença para continuar</p>
+
+            <div class="relative mb-4">
+                <input type="password" id="campoChave" placeholder="EX: ABC123-DEF456" class="w-full bg-ff-fundo border border-ff-borda rounded p-2.5 texto-chave text-center font-mono uppercase tracking-wide">
+                <button onclick="alternarVisao()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-ff-texto/70 hover:text-ff-azul">
+                    <i id="iconeOlho" class="fa fa-eye text-sm"></i>
+                </button>
+            </div>
+
+            <label class="flex items-center justify-center gap-2 mb-4 cursor-pointer">
+                <input type="checkbox" id="salvarLogin" class="w-4 h-4 accent-ff-verde">
+                <span class="text-sm text-ff-texto/70">Salvar Login</span>
+            </label>
+
+            <button onclick="verificarChave()" class="w-full bg-gradient-to-r from-ff-verde to-green-600 hover:brightness-110 text-white font-medium py-2 rounded transition">
+                Confirmar Chave
+            </button>
+
+            <p id="aviso" class="mt-3 text-sm text-ff-vermelho hidden"></p>
+        </div>
+    </div>
+
+    <!-- TELA DE PROCESSO -->
+    <div id="telaProcesso" class="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-[10000] hidden">
+        <div class="mod-border glow p-6 rounded-xl w-full max-w-xs text-center bg-ff-card">
+            <h3 id="textoProcesso" class="text-lg font-semibold text-ff-amarelo mb-3">📌 Deixe essa guia em segundo plano</h3>
+            <p class="text-sm text-ff-texto/70 mb-4">Aguarde <span id="contadorSegundos" class="text-ff-laranja font-bold text-xl">5</span> segundos...</p>
+            <div class="w-full h-1 bg-ff-borda rounded overflow-hidden">
+                <div id="barraProgresso" class="h-full bg-gradient-to-r from-ff-azul to-ff-destaque transition-all duration-1000" style="width: 0%"></div>
+            </div>
+            <p id="textoFinal" class="hidden text-white font-medium mt-3">✅ Injeção concluída! Abra o jogo normalmente</p>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL -->
+    <div id="painel" class="fixed top-8 left-8 w-72 sm:w-80 bg-ff-card mod-border rounded-xl z-[9998] hidden">
+        <div id="cabecalho" class="cabecalho-arrastavel bg-gradient-to-r from-ff-destaque to-ff-azul p-2.5 rounded-t-xl text-white flex justify-between items-center">
+            <span class="text-sm font-medium">Painel de Controle</span>
+            <span class="text-xs bg-black/30 px-1.5 py-0.5 rounded text-ff-amarelo/90">v2.4.1</span>
+        </div>
+
+        <div class="p-3.5 space-y-4 conteudo">
+            <div id="areaCliente" class="bg-ff-fundo border border-ff-borda rounded p-2.5 hidden">
+                <h3 class="text-ff-texto text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <i class="fa fa-id-card text-xs"></i> Informações da Licença
+                </h3>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-ff-texto/70">Usuário:</span>
+                        <span id="nomeCliente" class="text-ff-azul font-mono">---</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-ff-texto/70">Chave:</span>
+                        <span id="codigoChave" class="text-white font-mono">---</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-ff-texto/70">Validade:</span>
+                        <span id="tempoRestante" class="text-ff-laranja font-medium">---</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Funções do Painel -->
+            <div>
+                <h3 class="text-ff-amarelo text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <i class="fa fa-crosshairs text-xs"></i> Precisão de Mira
+                </h3>
+                <div class="space-y-1.5">
+                    <label class="flex justify-between items-center bg-ff-fundo border border-ff-borda rounded p-1.5 hover:border-ff-azul/50 transition cursor-pointer">
+                        <span class="text-ff-texto text-xs">Im Bot 15%</span>
+                        <input type="checkbox" class="w-3.5 h-3.5 accent-ff-verde">
+                    </label>
+                    <label class="flex justify-between items-center bg-ff-fundo border border-ff-borda rounded p-1.5 hover:border-ff-azul/50 transition cursor-pointer">
+                        <span class="text-ff-texto text-xs">Estabilidade de Tiro</span>
+                        <input type="checkbox" class="w-3.5 h-3.5 accent-ff-verde">
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-3">
+                <button onclick="aplicarConfiguracoes()" class="bg-gradient-to-r from-ff-verde to-green-600 hover:brightness-110 text-white text-xs font-medium py-1.5 rounded transition">
+                    Aplicar Configurações
+                </button>
+                <button onclick="resetarTudo()" class="bg-gradient-to-r from-ff-vermelho to-red-600 hover:brightness-110 text-white text-xs font-medium py-1.5 rounded transition">
+                    Restaurar Padrões
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE SENHA ADMIN -->
+    <div id="telaSenhaAdmin" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[99999] hidden">
+        <div class="mod-border glow p-6 rounded-xl w-full max-w-sm text-center bg-ff-card">
+            <h2 class="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-ff-destaque to-ff-azul mb-3">🔐 Acesso Administrativo</h2>
+            <p class="text-sm text-ff-texto/70 mb-4">Digite a chave de acesso</p>
+            <input type="password" id="senhaAdmin" placeholder="Sua chave" class="w-full bg-ff-fundo border border-ff-borda rounded p-2.5 text-center font-mono mb-4">
+            <button onclick="verificarSenhaAdmin()" class="w-full bg-gradient-to-r from-ff-verde to-green-600 hover:brightness-110 text-white py-2 rounded">Confirmar</button>
+            <p id="erroSenha" class="mt-3 text-sm text-ff-vermelho hidden">Chave incorreta</p>
+        </div>
+    </div>
+
+    <!-- PAINEL GERADOR DE CHAVES -->
+    <div id="painelGerador" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[99998] hidden p-4">
+        <div class="mod-border glow-blue p-5 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-ff-card">
+            <h2 class="text-xl font-bold text-center mb-6 text-transparent bg-clip-text bg-gradient-to-r from-ff-destaque to-ff-azul">🛠️ GERENCIADOR DE CHAVES</h2>
+
+            <div class="mod-border glow p-5 rounded-xl mb-6">
+                <h3 class="text-lg font-bold mb-4 text-ff-amarelo">Gerar Nova Chave</h3>
+                <div class="grid md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-sm mb-1 block text-ff-texto/90">Nome / Identificação</label>
+                        <input type="text" id="nomeUsuario" placeholder="Ex: Cliente" class="w-full bg-ff-fundo border border-ff-borda rounded p-2 text-ff-texto">
+                    </div>
+                    <div>
+                        <label class="text-sm mb-1 block text-ff-texto/90">Validade (Dias)</label>
+                        <select id="diasValidade" class="w-full bg-ff-fundo border border-ff-borda rounded p-2 text-ff-texto">
+                            <option value="1">1 Dia</option>
+                            <option value="7">7 Dias</option>
+                            <option value="30" selected>30 Dias</option>
+                            <option value="90">90 Dias</option>
+                            <option value="365">1 Ano</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="gerarChaveAdmin()" class="w-full bg-gradient-to-r from-ff-azul to-blue-600 hover:brightness-110 text-white font-bold py-2 rounded transition">
+                            GERAR CHAVE
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mod-border p-4 rounded-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-ff-azul">Chaves Ativas</h3>
+                    <button onclick="carregarChavesFirebase()" class="text-ff-texto/70 hover:text-white text-sm">
+                        <i class="fa fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+                <div id="listaChaves" class="space-y-3">
+                    <!-- Lista de chaves carregada dinamicamente -->
+                </div>
+            </div>
+
+            <button onclick="fecharPainelGerador()" class="mt-6 w-full py-2 border border-ff-borda rounded text-ff-texto/70 hover:bg-ff-borda transition">
+                Voltar ao Painel
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Versão Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ----------------------
+        // CONFIGURAÇÃO FIREBASE ATUALIZADA
+        // ----------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyAE3JaCmX-z552PNNSgbKaFGlDFTN2yljo",
+            authDomain: "ff-painel-c1ef2.firebaseapp.com",
+            projectId: "ff-painel-c1ef2",
+            storageBucket: "ff-painel-c1ef2.firebasestorage.app",
+            messagingSenderId: "945546289301",
+            appId: "1:945546289301:web:2c5e4acf9afca2445bbb9c"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const CHAVE_COLLECTION = "chaves_licenca";
+
+        // SENHA PARA ACESSAR O GERADOR (HARDCODED - Recomendo trocar por Firebase Auth no futuro)
+        const SENHA_ADMIN = "11933349792"; 
+        
+        let contadorTempo;
+        let toques4dedos = false;
+
+        window.onload = function() {
+            const salvar = localStorage.getItem('salvarLogin') === 'true';
+            document.getElementById('salvarLogin').checked = salvar;
+            if (salvar) {
+                const chaveSalva = localStorage.getItem('chaveSalva') || '';
+                document.getElementById('campoChave').value = chaveSalva;
+            }
+
+            // Atalho: 4 toques na tela abre o login admin
+            document.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 4){
+                    document.getElementById('telaSenhaAdmin').classList.remove('hidden');
+                }
+            });
+        };
+
+        function verificarSenhaAdmin(){
+            const senha = document.getElementById('senhaAdmin').value.trim();
+            if(senha === SENHA_ADMIN){
+                document.getElementById('telaSenhaAdmin').classList.add('hidden');
+                document.getElementById('painelGerador').classList.remove('hidden');
+                document.getElementById('erroSenha').classList.add('hidden');
+                carregarChavesFirebase();
+            } else {
+                document.getElementById('erroSenha').classList.remove('hidden');
+            }
+        }
+
+        function fecharPainelGerador(){
+            document.getElementById('painelGerador').classList.add('hidden');
+        }
+
+        // ----------------------
+        // FUNÇÕES FIREBASE
+        // ----------------------
+        async function gerarCodigoUnico() {
+            let codigo;
+            let existe = true;
+            do {
+                codigo = Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                const doc = await db.collection(CHAVE_COLLECTION).doc(codigo).get();
+                existe = doc.exists;
+            } while (existe);
+            return codigo;
+        }
+
+        async function gerarChaveAdmin() {
+            const nome = document.getElementById('nomeUsuario').value.trim();
+            const dias = parseInt(document.getElementById('diasValidade').value);
+            if (!nome) return alert('Digite um nome para identificar!');
+
+            try {
+                const codigo = await gerarCodigoUnico();
+                const expira = new Date();
+                expira.setDate(expira.getDate() + dias);
+
+                const nova = {
+                    id: Date.now(),
+                    chave: codigo,
+                    nome: nome,
+                    expira: expira.toISOString(),
+                    ativa: true
+                };
+
+                await db.collection(CHAVE_COLLECTION).doc(codigo).set(nova);
+                carregarChavesFirebase();
+                document.getElementById('nomeUsuario').value = '';
+                alert(`✅ Chave gerada: ${codigo}`);
+            } catch (error) {
+                console.error("Erro ao gerar chave:", error);
+                alert("Erro ao conectar com o banco de dados. Verifique as regras de segurança no console do Firebase.");
+            }
+        }
+
+        async function carregarChavesFirebase() {
+            try {
+                const snapshot = await db.collection(CHAVE_COLLECTION).get();
+                const lista = [];
+                snapshot.forEach(doc => lista.push(doc.data()));
+                atualizarListaChaves(lista);
+            } catch (error) {
+                console.error("Erro ao carregar chaves:", error);
+                const container = document.getElementById('listaChaves');
+                container.innerHTML = '<p class="text-center text-ff-vermelho p-4">Erro ao carregar chaves. Verifique as regras no Firebase.</p>';
+            }
+        }
+
+        function atualizarListaChaves(lista) {
+            const container = document.getElementById('listaChaves');
+            if (lista.length === 0) {
+                container.innerHTML = '<p class="text-center text-ff-texto/50 p-4">Nenhuma chave gerada ainda</p>';
+                return;
+            }
+
+            container.innerHTML = lista.map(item => {
+                const vencida = new Date(item.expira) < new Date();
+                const status = item.ativa ? (vencida ? 'Vencida' : 'Ativa') : 'Desativada';
+                const corStatus = item.ativa ? (vencida ? 'text-ff-amarelo' : 'text-ff-verde') : 'text-ff-vermelho';
+
+                return `
+                <div class="bg-ff-fundo border border-ff-borda p-3 rounded-lg flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <p class="font-mono text-ff-azul font-bold text-lg">${item.chave}</p>
+                        <p class="text-sm text-ff-texto/80">${item.nome} | Venc: ${new Date(item.expira).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="${corStatus} text-sm font-semibold">${status}</span>
+                        <button onclick="copiarChave('${item.chave}')" class="text-ff-azul hover:text-ff-azul/70"><i class="fa fa-copy"></i></button>
+                        <button onclick="excluirChave('${item.chave}')" class="text-ff-vermelho hover:text-ff-vermelho/70"><i class="fa fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function copiarChave(texto) {
+            navigator.clipboard.writeText(texto);
+            alert('📋 Chave copiada!');
+        }
+
+        async function excluirChave(chave) {
+            if (!confirm('Excluir esta chave?')) return;
+            try {
+                await db.collection(CHAVE_COLLECTION).doc(chave).delete();
+                carregarChavesFirebase();
+            } catch (error) { alert("Erro ao excluir: " + error.message); }
+        }
+
+        async function verificarChave() {
+            const digitada = document.getElementById('campoChave').value.trim().toUpperCase();
+            const aviso = document.getElementById('aviso');
+            const tela = document.getElementById('telaAcesso');
+            const painel = document.getElementById('painel');
+            const areaCliente = document.getElementById('areaCliente');
+            const salvarLogin = document.getElementById('salvarLogin').checked;
+
+            if (!digitada) {
+                aviso.textContent = 'Digite sua chave';
+                aviso.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const doc = await db.collection(CHAVE_COLLECTION).doc(digitada).get();
+                if (!doc.exists) {
+                    aviso.textContent = 'Chave inválida';
+                    aviso.classList.remove('hidden');
+                    return;
+                }
+
+                const valida = doc.data();
+                const vencida = new Date(valida.expira) < new Date();
+
+                if (!valida.ativa || vencida) {
+                    aviso.textContent = vencida ? 'Chave expirada' : 'Chave desativada';
+                    aviso.classList.remove('hidden');
+                    return;
+                }
+
+                if (salvarLogin) {
+                    localStorage.setItem('chaveSalva', digitada);
+                    localStorage.setItem('salvarLogin', 'true');
+                }
+
+                tela.classList.add('hidden');
+ 
